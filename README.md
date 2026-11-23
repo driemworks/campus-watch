@@ -11,3 +11,17 @@ The records (`incident`, `log`, `omission`) are published to Fangorn by
 archived copy. A record can't be changed without a new signed commit, so edits stay visible.
 
 Run it locally: `python3 -m http.server`, then open http://localhost:8000.
+
+## The data pipeline
+
+`pipeline/` pulls UWSP's weekly logs and publishes what's new. `.github/workflows/pull.yml` runs it daily.
+
+- `uwsp.py` downloads every log PDF from the UWSP page and parses it into incidents. It marks each run of incident
+  numbers missing from every log as an `omission`, and keeps both versions where two logs print an incident
+  differently. It calls `geocode.py` for new addresses (OSM: Overpass for intersections, Nominatim for street
+  addresses), saved in `pipeline/data/geo.json`.
+- `publish.js` compares each record with what the indexer holds and commits only the new or changed ones, signed
+  by `FANGORN_KEY`. A new log's PDF is archived to IPFS.
+
+Locally: `cd pipeline && npm ci && pip install pdfplumber && python3 uwsp.py work && DRY_RUN=1 node publish.js work`.
+The Action needs the repository secret `FANGORN_KEY`.

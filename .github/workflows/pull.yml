@@ -1,0 +1,61 @@
+# Pull UWSP's weekly police logs and publish what's new to Fangorn.
+# UWSP posts each week's log a few days after it ends, on no fixed day, so this checks daily. A day with nothing new
+# downloads nothing it has seen before (the PDFs are cached) and publishes nothing (publish.js only sends changes).
+#
+# Needs the repository secret FANGORN_KEY: the private key of the publisher 0x7b16…a936 (it signs the commits and
+# pays their gas on Base Sepolia).
+name: Pull weekly logs
+
+on:
+  schedule:
+    - cron: "17 14 * * *" # daily, 14:17 UTC (morning in Wisconsin)
+  workflow_dispatch:
+    inputs:
+      dry_run:
+        description: Say what would be published, publish nothing
+        type: boolean
+        default: false
+
+permissions:
+  contents: write # to commit new coordinates (pipeline/data/geo.json)
+
+concurrency: pull-logs # never two runs publishing at once
+
+jobs:
+  pull:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: pipeline
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: pipeline/package-lock.json
+      - run: pip install pdfplumber==0.11.11 && npm ci
+      # The PDFs already downloaded: a log is fetched once, ever.
+      - uses: actions/cache@v4
+        with:
+          path: pipeline/work/pdf
+          key: pdfs-${{ github.run_id }}
+          restore-keys: pdfs-
+      - name: Download and parse the logs
+        run: python uwsp.py work
+      - name: Publish what's new
+        env:
+          FANGORN_KEY: ${{ secrets.FANGORN_KEY }}
+          DRY_RUN: ${{ inputs.dry_run && '1' || '' }}
+        run: node publish.js work | tee -a "$GITHUB_STEP_SUMMARY"
+      - name: Keep new coordinates
+        if: ${{ !inputs.dry_run }}
+        run: |
+          git diff --quiet data/geo.json && exit 0
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git commit -m "geo: coordinates for new addresses" data/geo.json
+          git push
