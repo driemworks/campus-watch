@@ -8,7 +8,7 @@ name: Pull weekly logs
 
 on:
   schedule:
-    - cron: "17 14 * * *" # daily, 14:17 UTC (morning in Wisconsin)
+    - cron: "17 14 * * 1" # weekly on Mondays, 14:17 UTC
   workflow_dispatch:
     inputs:
       dry_run:
