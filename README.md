@@ -14,7 +14,7 @@ Run it locally: `python3 -m http.server`, then open http://localhost:8000.
 
 ## The data pipeline
 
-`pipeline/` pulls UWSP's weekly logs and publishes what's new. `.github/workflows/pull.yml` runs it daily.
+`pipeline/` pulls UWSP's weekly logs and publishes what's new. `.github/workflows/pull.yml` runs it weekly (Mondays), or by hand.
 
 - `uwsp.py` downloads every log PDF from the UWSP page and parses it into incidents. It marks each run of incident
   numbers missing from every log as an `omission`, and keeps both versions where two logs print an incident

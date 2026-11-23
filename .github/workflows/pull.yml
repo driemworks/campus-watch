@@ -1,6 +1,7 @@
 # Pull UWSP's weekly police logs and publish what's new to Fangorn.
-# UWSP posts each week's log a few days after it ends, on no fixed day, so this checks daily. A day with nothing new
-# downloads nothing it has seen before (the PDFs are cached) and publishes nothing (publish.js only sends changes).
+# Runs weekly. A run with nothing new downloads nothing it has seen before (the PDFs are cached) and publishes
+# nothing (publish.js only sends changes). UWSP posts each log a few days after its week ends, on no fixed day, so a
+# new log can wait up to a week here; run it by hand (workflow_dispatch) to pull one sooner.
 #
 # Needs the repository secret FANGORN_KEY: the private key of the publisher 0x7b16…a936 (it signs the commits and
 # pays their gas on Base Sepolia).
