@@ -43,7 +43,6 @@ select { background: var(--bg); color: var(--ink); border: 1px solid var(--line)
 .tile { background: var(--bg); border-radius: 8px; padding: 9px 10px; min-width: 0; }
 .tile b { display: block; font-size: 20px; font-variant-numeric: tabular-nums; line-height: 1.2; }
 .tile span { font-size: 11px; color: var(--mute); }
-.tile.gap b { color: var(--gap); }
 .cats { display: grid; gap: 6px; }
 .cat { display: grid; grid-template-columns: auto 1fr auto auto; align-items: center; gap: 8px; font-size: 13px; padding: 6px 8px; background: var(--bg); border-radius: 7px; }
 .cat b { font-variant-numeric: tabular-nums; }
@@ -73,10 +72,6 @@ button.play { width: 32px; height: 32px; border-radius: 50%; border: 1px solid v
 #range { font-weight: 600; font-variant-numeric: tabular-nums; }
 #hist { width: 100%; height: 64px; display: block; cursor: pointer; touch-action: none; margin-top: 6px; }
 .legend { font-size: 11px; color: var(--mute); display: flex; gap: 14px; margin-top: 4px; flex-wrap: wrap; }
-.legend i { display: inline-block; width: 10px; height: 3px; background: var(--gap); vertical-align: middle; margin-right: 4px; }
-#gapChart { width: 100%; height: 90px; display: block; }
-#gapChart rect.hit { fill: transparent; }
-#gapTip { font-size: 12px; min-height: 18px; color: var(--mute); }
 .leaflet-popup-content { font: 13px/1.4 system-ui, sans-serif; }
 .badge { display: inline-block; font-size: 10px; padding: 1px 6px; border-radius: 4px; background: var(--accent-soft); color: var(--accent); margin-left: 6px; font-weight: 500; }
 #status { font-size: 12px; color: var(--mute); }
@@ -93,12 +88,12 @@ button.play { width: 32px; height: 32px; border-radius: 50%; border: 1px solid v
   <aside>
     <div>
       <h1>Campus Watch</h1>
-      <div class="sub" style="margin-top:4px">UWSP Police &amp; Security logs since Jan 2024, from records on Fangorn that can't be quietly changed.</div>
+      <div class="sub" style="margin-top:4px">UWSP Police &amp; Security logs since Jan 2024, every entry linked to the PDF it came from.</div>
     </div>
     <nav>
       <a href="#week">This week</a>
       <a href="#explore">Explore</a>
-      <a href="#record">The record</a>
+      <a href="#data">Data</a>
     </nav>
     <div id="status">Loading records from the Fangorn index…</div>
 
@@ -123,10 +118,9 @@ button.play { width: 32px; height: 32px; border-radius: 50%; border: 1px solid v
       <input type="search" id="q" placeholder="Search: “bike stolen”, “fire alarm in a dorm”…">
       <section>
         <h2>In this window</h2>
-        <div class="tiles three">
+        <div class="tiles">
           <div class="tile"><b id="nShown">–</b><span>incidents</span></div>
           <div class="tile"><b id="nPlaces">–</b><span>places</span></div>
-          <div class="tile gap" title="Incident numbers that appear in no published log"><b id="nGap">–</b><span>missing</span></div>
         </div>
       </section>
       <section><h2>What</h2><div class="chips" id="kinds"></div></section>
@@ -135,36 +129,33 @@ button.play { width: 32px; height: 32px; border-radius: 50%; border: 1px solid v
       <section><h2 id="listTitle">Latest in window</h2><ul class="list" id="list"></ul></section>
     </div>
 
-    <!-- Officers and oversight: how complete and how stable the public record is -->
-    <div class="view" id="v-record">
+    <!-- Everyone: what's in the dataset, how it was read, and checking it against the source -->
+    <div class="view" id="v-data">
       <section>
-        <p class="sub">How complete the public log is, and whether it has changed. Every weekly PDF is archived and fingerprinted, and every incident is a signed record, so from here on nothing can be removed or edited without it showing.</p>
+        <p class="sub">What's in this dataset and how it was read from UWSP's weekly PDFs. Every incident links to the log it came from, and every log's archived copy can be checked against the original.</p>
         <div class="tiles">
-          <div class="tile"><b id="rPub">–</b><span>incidents published</span></div>
-          <div class="tile gap"><b id="rGap">–</b><span id="rGapPct">incident numbers missing</span></div>
-          <div class="tile"><b id="rRed">–</b><span id="rRedNote">pages published as images</span></div>
-          <div class="tile"><b id="rVar">–</b><span>incidents printed differently in two logs</span></div>
+          <div class="tile"><b id="dLogs">–</b><span>weekly logs read</span></div>
+          <div class="tile"><b id="dInc">–</b><span>incidents</span></div>
+          <div class="tile"><b id="dGeo">–</b><span id="dGeoNote">on the map</span></div>
+          <div class="tile"><b id="dImg">–</b><span id="dImgNote">pages that are images (not read)</span></div>
         </div>
+        <p style="margin-top:10px"><button class="ghost" id="csv">Download all incidents (CSV)</button></p>
       </section>
       <section>
-        <h2>Missing incident numbers, by week</h2>
-        <svg id="gapChart" role="img" aria-label="Missing incident numbers per week"></svg>
-        <div id="gapTip">Hover a bar for its week.</div>
+        <h2>Not on the map</h2>
+        <p class="sub">The most common addresses we couldn't place, mostly parking lots OpenStreetMap doesn't name.</p>
+        <ol class="top" id="unplaced"></ol>
       </section>
       <section>
-        <h2>Largest gaps</h2>
-        <table><thead><tr><th>Incident numbers</th><th class="n">Count</th><th>Between logs</th></tr></thead><tbody id="gapRows"></tbody></table>
-      </section>
-      <section>
-        <h2>Printed differently in two logs</h2>
+        <h2>Revised in a later log</h2>
+        <p class="sub">Entries printed in two weekly logs with different details. Shown as first printed; the later version is kept too.</p>
         <ul class="list" id="varList"></ul>
       </section>
       <section>
         <h2>Weekly logs</h2>
-        <p class="sub">“Check” downloads the archived copy from IPFS and recomputes its fingerprint in your browser. It should match the fingerprint of the file UWSP published.</p>
+        <p class="sub">“Check” downloads the archived copy and recomputes its fingerprint (sha256) in your browser. It should match the file UWSP published.</p>
         <table><thead><tr><th>Week</th><th class="n">Incidents</th><th class="n">Image pages</th><th>Copy</th></tr></thead><tbody id="logRows"></tbody></table>
       </section>
-      <div class="note">A missing number isn't proof of wrongdoing. Some incidents are left out of public logs by law or policy (victim privacy, juveniles, open investigations), and redaction is how sensitive details get withheld. What this page guarantees is that the gaps are visible and counted, and that the published record can't quietly change.</div>
     </div>
   </aside>
   <div id="map"></div>
@@ -176,7 +167,7 @@ button.play { width: 32px; height: 32px; border-radius: 50%; border: 1px solid v
       <label class="sub">Window <select id="win"><option value="1">1 week</option><option value="4" selected>4 weeks</option><option value="16">Semester</option><option value="0">Everything</option></select></label>
     </div>
     <canvas id="hist"></canvas>
-    <div class="legend"><span>Bars: incidents per week (drag to move the window)</span><span><i></i>missing incident numbers</span></div>
+    <div class="legend"><span>Bars: incidents per week (drag to move the window)</span></div>
   </footer>
 </div>
 <script>
@@ -203,7 +194,7 @@ const heat = L.heatLayer([], { radius: 22, blur: 18, maxZoom: 17, minOpacity: 0.
 const dots = L.layerGroup().addTo(map);
 let ring = null;
 
-let incidents = [], logs = new Map(), gaps = [], weeks = [], gateway = "", byId = new Map();
+let incidents = [], logs = new Map(), weeks = [], gateway = "", byId = new Map();
 let on = new Set(), win = 4, end = 0, hits = null, playing = null, view = "week";
 
 function dot(i, r = 5) {
@@ -228,7 +219,6 @@ async function load() {
   gateway = v.gateway;
   for (const r of v.records) {
     if (r.type === "log") logs.set(r.id, { ...r.payload, id: r.id });
-    else if (r.type === "omission") gaps.push({ ...r.payload, id: r.id });
   }
   for (const r of v.records) if (r.type === "incident") {
     const p = r.payload, t = +new Date(p.reported);
@@ -240,8 +230,6 @@ async function load() {
   for (let w = first; w <= last; w += WEEK) weeks.push(w);
   // ponytail: DST shifts Monday midnight by an hour; snap to the nearest bucket
   for (const i of incidents) i.wi = Math.round((i.week - first) / WEEK);
-  // An omission dates from the earliest log around it.
-  for (const g of gaps) g.wi = Math.max(0, Math.round((mondayOf(Math.min(...g.logs.map((l) => +new Date(l.id.slice(4) + "T00:00")))) - first) / WEEK));
   end = weeks.length - 1;
   const counts = {};
   for (const i of incidents) counts[i.category] = (counts[i.category] ?? 0) + 1;
@@ -249,7 +237,7 @@ async function load() {
   $("kinds").innerHTML = CATS.filter((c) => counts[c]).map((c) => `<button class="chip" data-k="${esc(c)}" aria-pressed="${on.has(c)}">${sw(c)}${esc(c)}<small>${counts[c].toLocaleString()}</small></button>`).join("");
   const located = incidents.filter((i) => i.ll).length;
   $("status").textContent = `${incidents.length.toLocaleString()} incidents · ${logs.size} weekly logs · ${located.toLocaleString()} on the map`;
-  setupWeek(); setupRecord();
+  setupWeek(); setupData();
   route();
 }
 
@@ -300,24 +288,23 @@ function weekMap() {
   if (pts.length) map.fitBounds(pts, { padding: [40, 40], maxZoom: 16 });
 }
 
-// ── The record (officers and oversight) ──────────────────────────────────────────────────────────
-function setupRecord() {
-  const missing = gaps.reduce((s, g) => s + g.count, 0), changed = incidents.filter((i) => i.variants);
-  const red = [...logs.values()].filter((l) => l.image_pages > 0);
-  $("rPub").textContent = incidents.length.toLocaleString();
-  $("rGap").textContent = missing.toLocaleString();
-  $("rGapPct").textContent = `incident numbers missing (${(100 * missing / (missing + incidents.length)).toFixed(1)}% of the numbering)`;
-  $("rRed").textContent = red.reduce((s, l) => s + l.image_pages, 0);
-  $("rRedNote").textContent = `pages published only as images, in ${red.length} logs (often where something was redacted)`;
-  $("rVar").textContent = changed.length;
-  drawGapChart();
-  const logLinks = (ls) => ls.map((l) => { const g = logs.get(l.id); return g ? `<a href="${gateway}/ipfs/${g.src}" target="_blank" rel="noopener">${date(+new Date(l.id.slice(4) + "T00:00"))}</a>` : l.id; }).join(" – ");
-  $("gapRows").innerHTML = [...gaps].sort((a, b) => b.count - a.count).slice(0, 12).map((g) => `<tr><td>${g.from}${g.to !== g.from ? `<br>to ${g.to}` : ""}</td><td class="n">${g.count}</td><td>${logLinks(g.logs)}</td></tr>`).join("");
+// ── Data (what's in the dataset and checking it) ─────────────────────────────────────────────────
+function setupData() {
+  const changed = incidents.filter((i) => i.variants), img = [...logs.values()].filter((l) => l.image_pages > 0);
+  const located = incidents.filter((i) => i.ll).length;
+  $("dLogs").textContent = logs.size; $("dInc").textContent = incidents.length.toLocaleString();
+  $("dGeo").textContent = `${Math.round(100 * located / incidents.length)}%`;
+  $("dGeoNote").textContent = `on the map (${located.toLocaleString()})`;
+  $("dImg").textContent = img.reduce((s, l) => s + l.image_pages, 0);
+  $("dImgNote").textContent = `pages published as images, in ${img.length} logs (not read)`;
+  const miss = new Map();
+  for (const i of incidents) if (!i.ll) miss.set(where(i), (miss.get(where(i)) ?? 0) + 1);
+  $("unplaced").innerHTML = [...miss].sort((a, b) => b[1] - a[1]).slice(0, 10).map(([k, n]) => `<li><span>${esc(k)}</span><em>${n}</em></li>`).join("");
   $("varList").innerHTML = changed.map((i) => {
     const d = i.variants.map((x) => ["nature", "reported", "address", "place"].filter((k) => x[k] !== i[k]).map((k) => `${k}: ${esc(i[k] || "–")} → ${esc(x[k] || "–")}`).join("; ")).join("<br>");
     return `<li data-id="${i.id}"><b>${sw(i.category)}${esc(i.kind)} · ${i.incident}</b><span>${d}</span></li>`;
   }).join("");
-  $("logRows").innerHTML = [...logs.values()].sort((a, b) => b.id.localeCompare(a.id)).map((l) => `<tr><td><a href="${esc(l.url)}" target="_blank" rel="noopener">${date(+new Date(l.id.slice(4) + "T00:00"))}</a></td><td class="n">${l.incidents}</td><td class="n${l.image_pages ? " bad" : ""}">${l.image_pages || ""}</td><td><button class="ghost" data-log="${l.id}">Check</button></td></tr>`).join("");
+  $("logRows").innerHTML = [...logs.values()].sort((a, b) => b.id.localeCompare(a.id)).map((l) => `<tr><td><a href="${esc(l.url)}" target="_blank" rel="noopener">${date(+new Date(l.id.slice(4) + "T00:00"))}</a></td><td class="n">${l.incidents}</td><td class="n">${l.image_pages || ""}</td><td><button class="ghost" data-log="${l.id}">Check</button></td></tr>`).join("");
   $("logRows").onclick = async (e) => {
     const b = e.target.closest("button[data-log]"); if (!b) return;
     const l = logs.get(b.dataset.log);
@@ -328,19 +315,14 @@ function setupRecord() {
       b.outerHTML = hex === l.sha256 ? `<span class="ok" title="sha256 ${hex}">✓ matches</span>` : `<span class="bad" title="got ${hex}, recorded ${l.sha256}">✗ differs</span>`;
     } catch (err) { b.textContent = "failed"; b.title = err.message; b.disabled = false; }
   };
-}
-
-function drawGapChart() {
-  const svg = $("gapChart"), w = svg.clientWidth || 340, h = 90, per = new Array(weeks.length).fill(0);
-  for (const g of gaps) per[g.wi] += g.count;
-  const max = Math.max(1, ...per), bw = w / weeks.length;
-  svg.setAttribute("viewBox", `0 0 ${w} ${h}`);
-  svg.innerHTML = `<line x1="0" x2="${w}" y1="${h - 14.5}" y2="${h - 14.5}" stroke="var(--line)"/>`
-    + per.map((n, k) => n ? `<rect x="${k * bw + 1}" y="${h - 15 - (h - 22) * n / max}" width="${Math.max(2, bw - 2)}" height="${(h - 22) * n / max}" rx="2" fill="var(--gap)"/>` : "").join("")
-    + per.map((n, k) => `<rect class="hit" data-k="${k}" x="${k * bw}" y="0" width="${bw}" height="${h}"/>`).join("")
-    + [0, Math.floor(weeks.length / 2), weeks.length - 1].map((k) => `<text x="${Math.min(w - 60, k * bw)}" y="${h - 2}" font-size="10" fill="var(--mute)">${date(weeks[k])}</text>`).join("");
-  svg.onmousemove = (e) => { const k = e.target.dataset?.k; if (k != null) $("gapTip").textContent = `Week of ${date(weeks[k])}: ${per[k]} missing incident number${per[k] === 1 ? "" : "s"}`; };
-  svg.onmouseleave = () => { $("gapTip").textContent = "Hover a bar for its week."; };
+  $("csv").onclick = () => {
+    const cols = ["incident", "reported", "kind", "category", "nature", "place", "address", "lat", "lon", "log"];
+    const q = (v) => /[",\n]/.test(v = String(v ?? "")) ? `"${v.replace(/"/g, '""')}"` : v;
+    const rows = incidents.map((i) => [i.incident, i.reported, i.kind, i.category, i.nature, i.place, i.address, i.ll?.[0], i.ll?.[1], i.logs?.[0]?.id].map(q).join(","));
+    const a = document.createElement("a");
+    a.href = URL.createObjectURL(new Blob([[cols.join(","), ...rows].join("\n")], { type: "text/csv" }));
+    a.download = "uwsp-police-incidents.csv"; a.click(); URL.revokeObjectURL(a.href);
+  };
 }
 
 // ── Explore (everyone) ───────────────────────────────────────────────────────────────────────────
@@ -359,7 +341,6 @@ function render() {
   $("top").innerHTML = top.map(([k, xs]) => `<li data-k="${esc(k)}"><span>${esc(k)}</span><em>${xs.length}</em></li>`).join("") || `<li><span class="sub">Nothing in this window.</span></li>`;
   $("top").onclick = (e) => { const li = e.target.closest("li[data-k]"); const xs = li && by.get(li.dataset.k)?.filter((i) => i.ll); if (xs?.length) map.setView(xs[0].ll, 18); };
   $("nShown").textContent = shown.length.toLocaleString(); $("nPlaces").textContent = by.size;
-  $("nGap").textContent = gaps.filter((g) => g.wi >= a && g.wi <= b).reduce((s, g) => s + g.count, 0).toLocaleString();
   const grid = Array.from({ length: 7 }, () => Array(24).fill(0));
   for (const i of shown) { const d = new Date(i.t); grid[(d.getDay() + 6) % 7][d.getHours()]++; }
   const max = Math.max(1, ...grid.flat());
@@ -378,8 +359,6 @@ function drawHist(a, b) {
   for (const i of incidents) if (on.has(i.category) && (!hits || hits.has(i.id))) per[i.wi]++;
   const max = Math.max(1, ...per), bw = w / weeks.length;
   per.forEach((n, k) => { g.fillStyle = k >= a && k <= b ? css("--bar-on") : css("--bar"); const bh = (h - 8) * n / max; g.fillRect(k * bw + .5, h - 6 - bh, Math.max(1, bw - 1), bh); });
-  g.fillStyle = css("--gap");
-  for (const x of gaps) g.fillRect(x.wi * bw, h - 4, Math.max(2, bw - 1), 4);
   g.strokeStyle = css("--accent"); g.lineWidth = 2; g.strokeRect(a * bw + 1, 1, (b - a + 1) * bw - 2, h - 2);
 }
 function seek(e) {
@@ -425,7 +404,8 @@ $("q").addEventListener("input", (e) => {
 
 // ── Views ────────────────────────────────────────────────────────────────────────────────────────
 function route() {
-  view = ["week", "explore", "record"].includes(location.hash.slice(1)) ? location.hash.slice(1) : "week";
+  const h = location.hash.slice(1) === "record" ? "data" : location.hash.slice(1); // #record: the old name
+  view = ["week", "explore", "data"].includes(h) ? h : "week";
   document.querySelectorAll("nav a").forEach((a) => a.hash === `#${view}` ? a.setAttribute("aria-current", "page") : a.removeAttribute("aria-current"));
   document.querySelectorAll(".view").forEach((v) => v.classList.toggle("on", v.id === `v-${view}`));
   document.body.classList.toggle("explore", view === "explore");
@@ -438,13 +418,13 @@ function route() {
     if (view === "week") { $("near").value = ""; near(); }
     else {
       const xs = incidents.filter((i) => i.variants && i.ll);
-      showDots(xs); drawGapChart();
+      showDots(xs);
       if (xs.length) map.fitBounds(xs.map((i) => i.ll), { padding: [60, 60], maxZoom: 16 });
     }
   }
 }
 addEventListener("hashchange", () => incidents.length && route());
-addEventListener("resize", () => { if (!incidents.length) return; if (view === "explore") render(); if (view === "record") drawGapChart(); });
+addEventListener("resize", () => { if (!incidents.length) return; if (view === "explore") render(); });
 load().catch((e) => { $("status").textContent = `Couldn't load the index: ${e.message}`; });
 </script>
 </body>
